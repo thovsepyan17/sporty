@@ -1,0 +1,7 @@
+spring:
+  autoconfigure:
+    exclude: org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
+
+app:
+  rocketmq:
+    mock: true
