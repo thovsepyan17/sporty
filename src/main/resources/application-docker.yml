@@ -1,0 +1,7 @@
+spring:
+  autoconfigure:
+    exclude: []
+
+app:
+  rocketmq:
+    mock: false

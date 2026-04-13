@@ -36,7 +36,7 @@ A Spring Boot backend service that simulates sports betting event outcome handli
 
 - **Java 17+**
 - **Maven 3.8+**
-- **Docker & Docker Compose** (for Kafka and RocketMQ)
+- **Docker & Docker Compose** (for Kafka; RocketMQ optional)
 
 ## Quick Start
 
@@ -48,24 +48,26 @@ docker-compose up -d
 
 This starts:
 - **Kafka** (KRaft mode, no Zookeeper) on `localhost:9092`
-- **RocketMQ NameServer** on `localhost:9876`
-- **RocketMQ Broker** on `localhost:10911`
+- **RocketMQ NameServer** on `localhost:9876` *(optional — only needed for full mode)*
+- **RocketMQ Broker** on `localhost:10911` *(optional)*
 
 ### 2. Run the Application
 
-**Option A — Full mode (Kafka + RocketMQ):**
+**Option A — Default mode (Kafka + mock RocketMQ):**
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-**Option B — Mock RocketMQ mode (Kafka only, RocketMQ is mocked):**
+By default, RocketMQ is mocked: the producer logs the payload and directly triggers bet settlement, simulating the full end-to-end flow without requiring RocketMQ infrastructure.
+
+**Option B — Full mode (Kafka + real RocketMQ via Docker):**
 
 ```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=mock
+./mvnw spring-boot:run -Dspring-boot.run.profiles=docker
 ```
 
-In mock mode, the RocketMQ producer logs the payload and directly triggers bet settlement, simulating the full end-to-end flow without requiring RocketMQ infrastructure.
+Requires all Docker Compose services running, including RocketMQ.
 
 ### 3. Test the Flow
 

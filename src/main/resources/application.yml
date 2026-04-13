@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: sporty-betting
+  autoconfigure:
+    exclude:
+      - org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
   datasource:
     url: jdbc:h2:mem:bettingdb
     driver-class-name: org.h2.Driver
@@ -50,7 +53,7 @@ rocketmq:
 
 app:
   rocketmq:
-    mock: false
+    mock: true
 
 logging:
   level:
