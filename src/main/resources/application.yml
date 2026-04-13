@@ -12,10 +12,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
   h2:
     console:
       enabled: true
@@ -25,6 +25,12 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        linger.ms: 10
+        batch.size: 16384
+        compression.type: lz4
     consumer:
       group-id: betting-service
       auto-offset-reset: earliest
@@ -32,6 +38,10 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
+        fetch.min.bytes: 1024
+        fetch.max.wait.ms: 500
+    listener:
+      concurrency: 3
 
 rocketmq:
   name-server: localhost:9876

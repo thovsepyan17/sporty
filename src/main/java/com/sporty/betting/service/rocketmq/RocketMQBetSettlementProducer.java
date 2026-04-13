@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,7 +21,18 @@ public class RocketMQBetSettlementProducer implements BetSettlementProducer {
     @Override
     public void send(BetSettlementMessage message) {
         log.info("Sending bet settlement to RocketMQ topic '{}': {}", TOPIC, message);
-        rocketMQTemplate.convertAndSend(TOPIC, message);
-        log.info("Bet settlement sent successfully for bet ID: {}", message.getBetId());
+        rocketMQTemplate.asyncSend(TOPIC, MessageBuilder.withPayload(message).build(),
+                new org.apache.rocketmq.client.producer.SendCallback() {
+                    @Override
+                    public void onSuccess(org.apache.rocketmq.client.producer.SendResult sendResult) {
+                        log.info("Bet settlement sent successfully for bet ID: {} [msgId={}]",
+                                message.getBetId(), sendResult.getMsgId());
+                    }
+
+                    @Override
+                    public void onException(Throwable e) {
+                        log.error("Failed to send bet settlement for bet ID: {}", message.getBetId(), e);
+                    }
+                });
     }
 }
