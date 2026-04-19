@@ -50,6 +50,8 @@ This starts:
 - **Kafka** (KRaft mode, no Zookeeper) on `localhost:9092`
 - **RocketMQ NameServer** on `localhost:9876` *(optional — only needed for full mode)*
 - **RocketMQ Broker** on `localhost:10911` *(optional)*
+- **Kafka UI** on http://localhost:8090 *(browse Kafka topics/messages in the browser)*
+- **RocketMQ Dashboard** on http://localhost:8091 *(browse RocketMQ in the browser)*
 
 ### 2. Run the Application
 
@@ -155,6 +157,19 @@ OpenAPI JSON spec at `http://localhost:8080/v3/api-docs`.
 ### H2 Console
 
 Available at `http://localhost:8080/h2-console` with JDBC URL `jdbc:h2:mem:bettingdb`.
+
+### Kafka & RocketMQ in the browser (no terminal)
+
+After `docker-compose up -d`, open:
+
+| Tool | URL | What you see |
+|------|-----|--------------|
+| **Kafka UI** | http://localhost:8090 | Topics (e.g. `event-outcomes`), messages, consumer groups |
+| **RocketMQ Dashboard** | http://localhost:8091 | Topics (e.g. `bet-settlements`), producers/consumers |
+
+In **Kafka UI**: select cluster **local** → **Topics** → `event-outcomes` → **Messages** — trigger **POST** `/api/v1/event-outcomes` from Swagger and refresh to see new records.
+
+In **RocketMQ Dashboard**: **Topic** → search `bet-settlements` → inspect message traffic after publishing an event outcome (use Spring profile `docker` for real RocketMQ).
 
 ## Project Structure
 
