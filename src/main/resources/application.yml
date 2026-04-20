@@ -50,6 +50,10 @@ rocketmq:
   name-server: localhost:9876
   producer:
     group: bet-settlement-producer-group
+    # Default is ~3000 ms; host → Docker broker paths often need more time
+    send-message-timeout: 30000
+    retry-times-when-send-async-failed: 3
+    retry-times-when-send-failed: 2
 
 app:
   rocketmq:

@@ -18,6 +18,33 @@ A Spring Boot backend service that simulates sports betting event outcome handli
 3. For each matched bet, it determines WIN/LOSS and sends a settlement message to RocketMQ topic `bet-settlements`.
 4. RocketMQ consumer receives the settlement message and updates the bet status in the database.
 
+### Pipeline diagrams (same style as end-to-end flow)
+
+**Real RocketMQ** — run with `spring.profiles.active=docker` and Docker RocketMQ up. Five steps in one line:
+
+```
+┌────────────┐     ┌──────────────────┐     ┌─────────────────────────────┐     ┌────────────────────┐     ┌─────────────────────────────┐
+│  REST API  │────▶│  Kafka Producer  │────▶│      Kafka Consumer         │────▶│ RocketMQ Producer  │────▶│     RocketMQ Consumer       │
+│    POST    │     │  event-outcomes  │     │  event-outcomes             │     │  bet-settlements   │     │  bet-settlements            │
+│            │     │                  │     │  + Bet Matching             │     │                    │     │  + Bet Settlement           │
+└────────────┘     └──────────────────┘     └─────────────────────────────┘     └────────────────────┘     └─────────────────────────────┘
+```
+
+**Mock RocketMQ (default)** — Kafka is real; RocketMQ broker is skipped. After bet matching, settlement runs in the same app (log + `settleBet()` → H2):
+
+```
+┌────────────┐     ┌──────────────────┐     ┌─────────────────────────────┐     ┌─────────────────────────────┐
+│  REST API  │────▶│  Kafka Producer  │────▶│      Kafka Consumer         │────▶│  Mock producer (no broker)  │
+│    POST    │     │  event-outcomes  │     │  event-outcomes             │     │  log payload + settle → H2  │
+│            │     │                  │     │  + Bet Matching             │     │                             │
+└────────────┘     └──────────────────┘     └─────────────────────────────┘     └─────────────────────────────┘
+```
+
+| Mode | Spring profile | RocketMQ topic `bet-settlements` |
+|------|----------------|----------------------------------|
+| Real | `docker` | Used (producer → broker → consumer) |
+| Mock | *(none / default)* | Not used (in-process only) |
+
 ## Tech Stack
 
 | Component       | Technology                          |
@@ -50,8 +77,7 @@ This starts:
 - **Kafka** (KRaft mode, no Zookeeper) on `localhost:9092`
 - **RocketMQ NameServer** on `localhost:9876` *(optional — only needed for full mode)*
 - **RocketMQ Broker** on `localhost:10911` *(optional)*
-- **Kafka UI** on http://localhost:8090 *(browse Kafka topics/messages in the browser)*
-- **RocketMQ Dashboard** on http://localhost:8091 *(browse RocketMQ in the browser)*
+- **RocketMQ Dashboard** on http://localhost:8091 *(browse RocketMQ topics/messages in the browser)*
 
 ### 2. Run the Application
 
@@ -70,6 +96,10 @@ By default, RocketMQ is mocked: the producer logs the payload and directly trigg
 ```
 
 Requires all Docker Compose services running, including RocketMQ.
+
+**Host IDE + Docker RocketMQ:** The broker loads **`docker/rocketmq/broker-docker.conf`**, which sets **`brokerIP1 = 127.0.0.1`**, so NameServer returns an address your **Windows/Mac host** can use with published ports **10909** and **10911**. (The JVM flag `-Drocketmq.broker.ip1` is not reliably picked up by the `apache/rocketmq` image entrypoint.) After changing this file, recreate the broker: `docker-compose up -d --force-recreate rocketmq-broker` (and restart the app). Re-create the topic if needed: `.\scripts\create-rocketmq-topic.ps1`.
+
+If you see **`sendDefaultImpl call timeout`** / **`RemotingTooMuchRequestException`**, allow **TCP 10909 and 10911** through the firewall; **`send-message-timeout`** is raised in **`application.yml`**.
 
 ### 3. Test the Flow
 
@@ -158,18 +188,25 @@ OpenAPI JSON spec at `http://localhost:8080/v3/api-docs`.
 
 Available at `http://localhost:8080/h2-console` with JDBC URL `jdbc:h2:mem:bettingdb`.
 
-### Kafka & RocketMQ in the browser (no terminal)
+### RocketMQ in the browser (no terminal)
 
-After `docker-compose up -d`, open:
+After `docker-compose up -d`, open **http://localhost:8091** (RocketMQ Dashboard). The image listens on **8082** inside Docker; compose maps **8091 → 8082** — if you changed the mapping, use the host port you set. Use the **Topic** tab (not **Producer**) to list topics. Inspect **`bet-settlements`** after you publish an event outcome (Spring profile `docker` for real RocketMQ).
 
-| Tool | URL | What you see |
-|------|-----|--------------|
-| **Kafka UI** | http://localhost:8090 | Topics (e.g. `event-outcomes`), messages, consumer groups |
-| **RocketMQ Dashboard** | http://localhost:8091 | Topics (e.g. `bet-settlements`), producers/consumers |
+**If the dashboard will not create a topic:** create it with the broker CLI (reliable on Windows):
 
-In **Kafka UI**: select cluster **local** → **Topics** → `event-outcomes` → **Messages** — trigger **POST** `/api/v1/event-outcomes` from Swagger and refresh to see new records.
+```powershell
+.\scripts\create-rocketmq-topic.ps1
+```
 
-In **RocketMQ Dashboard**: **Topic** → search `bet-settlements` → inspect message traffic after publishing an event outcome (use Spring profile `docker` for real RocketMQ).
+Or manually:
+
+```text
+docker exec sporty-rocketmq-broker sh mqadmin updateTopic -n rocketmq-namesrv:9876 -t bet-settlements -c DefaultCluster -r 4 -w 4
+```
+
+Cluster name is **`DefaultCluster`** for this Docker setup. Producer group: **`bet-settlement-producer-group`**. Consumer group: **`bet-settlement-consumer-group`**.
+
+Kafka has no UI in this compose file; watch **application logs** for `Publishing event outcome` / `Received event outcome from Kafka`, or use `kafka-console-consumer.sh` inside the Kafka container if you need raw topic inspection.
 
 ## Project Structure
 

@@ -35,32 +35,24 @@ services:
     ports:
       - "10911:10911"
       - "10909:10909"
-    command: sh mqbroker -n rocketmq-namesrv:9876 autoCreateTopicEnable=true
+    # brokerIP1 in broker-docker.conf so NameServer returns 127.0.0.1 (reachable from Windows host).
+    # JVM -Drocketmq.broker.ip1 is not reliably applied by this image's mqbroker entrypoint.
+    volumes:
+      - ./docker/rocketmq/broker-docker.conf:/tmp/broker-docker.conf:ro
+    command: sh mqbroker -n rocketmq-namesrv:9876 -c /tmp/broker-docker.conf
     environment:
       - NAMESRV_ADDR=rocketmq-namesrv:9876
       - JAVA_OPT_EXT=-server -Xms256m -Xmx512m
     depends_on:
       - rocketmq-namesrv
 
-  # Browse Kafka topics and messages in the browser
-  kafka-ui:
-    image: provectus/kafka-ui:latest
-    container_name: sporty-kafka-ui
-    ports:
-      - "8090:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      DYNAMIC_CONFIG_ENABLED: "true"
-    depends_on:
-      - kafka
-
   # Browse RocketMQ topics and messages in the browser
   rocketmq-dashboard:
     image: apacherocketmq/rocketmq-dashboard:2.1.0
     container_name: sporty-rocketmq-dashboard
     ports:
-      - "8091:8080"
+      # Dashboard 2.1.x listens on 8082 inside the container
+      - "8091:8082"
     environment:
       JAVA_OPTS: "-Drocketmq.namesrv.addr=rocketmq-namesrv:9876"
     depends_on:
